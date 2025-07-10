@@ -1,0 +1,35 @@
+Survival_11aug <- read_excel("lenghts11thaugust2022.xlsx", sheet = 2)
+
+Survival_11aug %>% select(K1) %>% max(na.rm = TRUE)
+
+
+Survival_perct11aug <- Survival_11aug %>% transmute(Day = Day, 
+                              Control = Control * 100 /max(Control,na.rm = TRUE),
+                               K1 = K1 * 100 /max(K1,na.rm = TRUE),
+                               K2 = K2 * 100 /max(K2,na.rm = TRUE),
+                               K3 = K3 * 100 /max(K3,na.rm = TRUE),
+                               K4 = K4 * 100 /max(K4,na.rm = TRUE)
+                               )
+survival_11auggraph <- Survival_perct11aug %>% pivot_longer(!"Day")
+
+Survival11aug <- survival_11auggraph %>%
+  group_by(name,Day) %>%
+  ggplot(aes(x = Day, y = value, color = as.factor(name), group = name)) + 
+  geom_line(size = 1.5) +
+  geom_point(size = 3) +
+  geom_hline(yintercept = 0, size = 1, linetype = "dotted") +
+  scale_y_continuous(limits = c(0,100), breaks = seq(from = 0, to = 100, by = 20)) +
+  scale_x_continuous(limits = c(10,40), breaks = seq(from = 10, to = 40, by = 10)) +
+  theme_bw() +   
+  #facet_wrap(~name, scale = "free_y") +
+  #scale_fill_manual(values = group.colors) +
+  #scale_color_manual(breaks = c("Control","T2", "T3", "T1"),
+                    # values = c("grey", "blue", "orange", "indianred")) + 
+  #scale_color_brewer(palette = "Set2")+ 
+  ggtitle("Survival during feeding") +
+  xlab("Day") + 
+  ylab("Survival %") + 
+  labs(color = "Treatment", subtitle = "first experiment") + 
+  theme( axis.title = element_text(size = 15, face = "bold"),
+         plot.title = element_text(hjust = 0.5, size = 15),
+         plot.subtitle = element_text(hjust = 0.5, size = 13))
