@@ -1,0 +1,159 @@
+library("tidyverse")
+library(gridExtra)
+library(car)
+library("readxl")
+library("janitor")
+library('ggthemes')
+library("broom")
+
+# reading the excel file into a dataframe
+dataframe_feeding <- read_excel("Feedingregime2.xlsx", sheet = 1)
+
+groupcolors.name <- c( T2 = "#333BFF" , T1 = "navy", T3 = "orange", Control = "black")
+  groupcolors.name
+  
+ Survival1 <- dataframe_feeding %>%
+  group_by(Tank,Day) %>%
+  ggplot(aes(x = Day, y = Survival, color = as.factor(Tank), group = Tank)) + 
+  geom_line(size = 1.5) +
+  geom_point(size = 3) +
+  geom_hline(yintercept = 0, size = 1, linetype = "dotted") +
+  scale_y_continuous(limits = c(0,100), breaks = seq(from = 0, to = 100, by = 20)) +
+  scale_x_continuous(limits = c(10,100), breaks = seq(from = 10, to = 100, by = 10)) +
+  theme_bw() +   
+  #facet_wrap(~Tank, scale = "free_y") +
+  #scale_fill_manual(values = group.colors) +
+  scale_color_manual(breaks = c("Control","T2", "T3", "T1"),
+                    values = c("grey", "blue", "orange", "indianred")) + 
+  #scale_color_brewer(palette = "Set2")+ 
+  ggtitle("Survival during feeding") +
+  xlab("Day") + 
+  ylab("Survival %") + 
+  labs(color = "Treatment", subtitle = "first experiment") + 
+  theme( axis.title = element_text(size = 15, face = "bold"),
+         plot.title = element_text(hjust = 0.5, size = 15),
+         plot.subtitle = element_text(hjust = 0.5, size = 13))
+
+  
+
+#preparing the data for the improved ingestion graph 
+data_frame_pivot <- dataframe_feeding %>%
+  pivot_longer(!c(Tank,Day), names_to = "Variables_measured", values_to = "Measurement")
+dataframe_pivot_ingestion <- data_frame_pivot[data_frame_pivot$Variables_measured == "Percentage_Ingestion" |data_frame_pivot$Variables_measured == "percentage_full",]
+
+#making sure there is a legend also for linetype, using pivot_longer and groups to make sure only one geom is needed
+Ingestion1 <- dataframe_pivot_ingestion %>%
+  group_by(Tank,Day) %>%
+  ggplot(aes(x =as.factor(Day))) + 
+  geom_line(aes(y= Measurement, color = Tank, group = Variables_measured, linetype = Variables_measured), size = 1.5) +
+  facet_wrap(~Tank) +
+  scale_linetype_manual("Ingestion", values=c("22","solid"), labels = c("% >50", "% of total"), guide=guide_legend(keywidth = 2,reverse = TRUE))+
+  geom_hline(yintercept = 50, size = 1, linetype = "dotted") +
+  scale_y_continuous(limits = c(0,100), breaks = seq(from = 0, to = 100, by = 20)) +
+  scale_x_discrete(breaks = seq(from = 12, to = 50, by = 5)) +
+  theme_bw() +   
+  theme(legend.position = "right") +
+  facet_wrap(~Tank, scale = "free_y") +
+  #scale_color_brewer(palette = "Set2")+ 
+  ggtitle("Ingestion") +
+  xlab("Day") + 
+  ylab("Ingestion%") + 
+  labs(color = "Tank") + 
+  theme( axis.title = element_text(size = 15, face = "bold"),
+         plot.title = element_text(hjust = 0.5, size = 15),
+         plot.subtitle = element_text(hjust = 0.5, size = 13))
+
+
+
+
+
+# Larval length analysis 
+
+Larval_lenght <- dataframe_feeding <- read_excel("Feedingregime2lenght.xlsx", sheet = 1)
+
+# remove the measurements of day 26 for protocol isues
+Larval_lenght2 <- Larval_lenght %>% filter(Day != 26)
+
+#pivot the dataset to prepare for ggplot graph and remove the Na values, also summarize it to mean lenghts per day for each group
+Larval_lenght3 <- Larval_lenght2 %>% 
+  pivot_longer(!c("Day")) %>%
+  group_by(Day,name) %>% 
+ summarize(meanlenght = mean(value, na.rm = TRUE))
+  
+# making the growth graph using ggplot
+
+Growth_graph <- Larval_lenght3 %>%
+  ggplot(aes(x = Day, y = meanlenght, color = as.factor(name), group = name)) + 
+  geom_line(size = 1.5) +
+  #geom_jitter(size = 3, width = 0.4)+
+  geom_point(size = 3) +
+  #stat_smooth(method = lm)+
+  geom_hline(yintercept = 0, size = 1, linetype = "dotted") +
+  scale_y_continuous(limits = c(5,20), breaks = seq(from = 0, to = 20, by = 1)) +
+  scale_x_continuous(limits = c(10,100), breaks = seq(from = 10, to = 100, by = 10)) +
+  theme_bw() +   
+  #scale_color_manual(breaks = c("Control","T2", "T3", "T1"),
+                    # values = c("grey", "blue", "orange", "indianred")) +
+  #facet_wrap(~name, scale = "free_y") +
+  scale_color_brewer(palette = "Set2")+ 
+  ggtitle("Growth") +
+  xlab("Day") + 
+  ylab("Lenght in mm") + 
+  labs(color = "Treatment", subtitle = "first experiment") + 
+  theme( axis.title = element_text(size = 15, face = "bold"),
+         plot.title = element_text(hjust = 0.5, size = 15),
+         plot.subtitle = element_text(hjust = 0.5, size = 13))
+
+
+
+?summarize()
+
+#show survival and growth in same graph
+
+grid.arrange(Survival1, Growth_graph)
+grid.arrange(Survival1, Survival2)
+grid.arrange(Growth_graph, Growth_graphnew)#, Growth_graphthird)
+
+# graph for ingestion, without pivoting 
+
+Ingestion <- dataframe_feeding
+
+ingesiton_graph <- Ingestion %>%
+  group_by(Tank,Day) %>%
+  ggplot(aes(x = as.factor(Day))) +
+  geom_line(aes(y=Percentage_Ingestion, color = as.factor(Tank), group = Tank), size = 1.5)+
+  geom_line(aes(y=percentage_full, color = as.factor(Tank), group = Tank), size = 1.5, linetype = "dashed") +
+  geom_hline(yintercept = 20, size = 1, linetype = "dotted") +
+  scale_y_continuous(limits = c(0,100), breaks = seq(from = 0, to = 100, by = 20)) +
+  theme_bw() +   
+  facet_wrap(~Tank, scale = "free_y") +
+  scale_color_brewer(palette = "Set2")+ 
+  ggtitle("Ingestion") +
+  xlab("Day") + 
+  ylab("Ingestion%") + 
+  labs(color = "Tank") + 
+  theme( axis.title = element_text(size = 15, face = "bold"),
+         plot.title = element_text(hjust = 0.5, size = 15),
+         plot.subtitle = element_text(hjust = 0.5, size = 13))
+
+
+#regression line per Tank
+model1 <- dataframe_feeding %>% group_by(Tank) %>% do(tidy(lm(Survival ~ Day, data = .)))
+
+
+model <- lm(Survival ~ Day, data = dataframe_feeding)
+
+summary(model)
+
+test1 <- select(dataframe_feeding, c(Day,Survival))
+test2 <- test1 %>% transmute(Survival,Day = (Day - 13))
+
+test2 %>%
+  ggplot(aes(x=as.factor(Day), y = Survival)) + 
+  geom_point() +
+  geom_abline(slope = -7.4990, intercept = 112.3687, size = 1.5) +
+  theme_solarized() + 
+  xlab("Day of feeding")
+
+model <- lm(Survival ~ Day, data = test2)
+summary(model)
